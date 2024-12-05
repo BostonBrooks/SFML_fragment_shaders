@@ -5,4 +5,5 @@ set(CMAKE_C_STANDARD 11)
 include_directories( ./ )
 add_executable(SFML_fragment_shaders
         code/HelloWorld.c
-        code/SimpleTest.c)
+        code/SimpleTest.c
+        code/testThree.c)
