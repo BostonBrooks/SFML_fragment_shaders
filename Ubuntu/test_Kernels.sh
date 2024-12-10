@@ -8,7 +8,9 @@ Color_Off='\033[0m'
 
 
 if gcc -I ../\
-    SimpleTest.c -lcsfml-system -lcsfml-graphics -lcsfml-window;
+    ../test/test_Kernels.c\
+     ../engine/maths/bbGPU_Interpolation.c\
+     -lcsfml-system -lcsfml-graphics -lcsfml-window -g -lm -w;
 then
     echo "Compile Succeeded:"
     ./a.out

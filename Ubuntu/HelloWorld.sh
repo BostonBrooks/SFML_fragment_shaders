@@ -7,8 +7,7 @@ Color_Off='\033[0m'
  echo -e "Look, a Tortoise:\n${BGreen}\n       _____     ____\n     /      \  |  o |\n    |        |/ ___\| \n    |_________/     \n    |_|_| |_|_|\n//////////////////////////////////////////////////////////////${Color_Off}\n\nAttempting to compile:\n"
 
 
-if gcc -I ../\
-    testThree.c -lcsfml-system -lcsfml-graphics -lcsfml-window;
+if gcc ../test/HelloWorld.c -lcsfml-system -lcsfml-graphics -lcsfml-window;
 then
     echo "Compile Succeeded:"
     ./a.out
