@@ -8,7 +8,7 @@ Color_Off='\033[0m'
 
 
 if gcc -I ../\
-    ../test5.c -lcsfml-system -lcsfml-graphics -lcsfml-window;
+    ../test/test5.c -lcsfml-system -lcsfml-graphics -lcsfml-window;
 then
     echo "Compile Succeeded:"
     ./a.out

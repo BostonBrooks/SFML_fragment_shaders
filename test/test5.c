@@ -62,7 +62,7 @@ int main (void){
 	bbAssert(magentaTexture != NULL, "sfTexture_createFromFile failed\n");
 	blueTexture = sfTexture_createFromFile("../data/BLUE.png", NULL);
 	bbAssert(blueTexture != NULL, "sfTexture_createFromFile failed\n");
-	checkTexture = sfTexture_createFromFile("../data/CHECK.png", NULL);
+	checkTexture = sfTexture_createFromFile("../data/TEST5.png", NULL);
 	bbAssert(checkTexture != NULL, "sfTexture_createFromFile failed\n");
 
 	/* Load a sprite to display */

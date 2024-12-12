@@ -9,4 +9,7 @@ add_executable(SFML_fragment_shaders
         test/testThree.c
         engine/maths/bbGPU_Interpolation.h
         engine/maths/bbGPU_Interpolation.c
-        test/test_Kernels.c)
+        test/test_Kernels.c
+        test/test7.c
+        test/test8.c
+        test/test8.c)
