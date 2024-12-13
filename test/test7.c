@@ -141,6 +141,8 @@ int main (void){
 	sfRenderWindow_drawSprite(window, sprite1, NULL);
 	sfRenderWindow_display(window);
 
+	
+
 	while (1) {
 		sfEvent event;
 		sfRenderWindow_waitEvent(window, &event);
