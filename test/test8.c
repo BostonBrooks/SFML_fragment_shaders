@@ -29,6 +29,8 @@ char fragShader[] = "\
     #define PIXELS_PER_TILE       16\n\
 	uniform float L_Kernel[65];\
     uniform float GD_Kernel[97];\
+    uniform int square_x;\
+    uniform int square_y;\
     \
     void main()\
     {\
