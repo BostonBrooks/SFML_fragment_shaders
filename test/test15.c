@@ -28,7 +28,7 @@ char vertShader[] = "\n\
 char fragShader[] = "\
     #define PIXELS_PER_TILE       16\n\
 	#define TILES_PER_SQUARE      32\n\
-    #define HEIGHTMAP_PADDING     19\n\
+    #define HEIGHTMAP_PADDING     8\n\
 \
 \
 	uniform float L_Kernel[65];\
@@ -48,31 +48,52 @@ char fragShader[] = "\
 		int heghtmap_x = tile_x + HEIGHTMAP_PADDING;\
 		int heghtmap_y = tile_y + HEIGHTMAP_PADDING;\
 \
-		int z = (x % 64);\
-		float w = ((L_Kernel[z]) + 1.0f)/2.0f;\
-		z = (y % 96);\
-		float bar = ((GD_Kernel[z]) + 1.0f)/2.0f;\
+		float partial_x = 0;\
+		float partial_y = 0;\
+		\
+		for (int i = -3; i<3; i++){\
+		    for (int j = -2; j<2; j++){\
+				int X = (i+1)*PIXELS_PER_TILE - remainder_x;\
+				int Y = (j+1)*PIXELS_PER_TILE - remainder_y;\
+				vec2 myCoord2;\
+				myCoord2.x = (tile_x + i) * (1.0f/512.0f); \
+				myCoord2.y = (tile_y + j) * (1.0f/512.0f); \
+				float foo = texture2D(HeightMap, myCoord2).r / 2.0;\
+		        partial_x += foo * GD_Kernel[X+48]*L_Kernel[Y+32];\
+            }\
+        }\
 \
-		float sum = 0;\
-		vec2 myCoord = vec2(heghtmap_x, heghtmap_y) / 512.0f;\
-        gl_FragColor = texture2D(HeightMap, myCoord);\
-		for (int i = -2;i<2;i++){\
-			for(int j = -2; j<2; j++){\
-				int X = i*PIXELS_PER_TILE - remainder_x;\
-				int Y = j*PIXELS_PER_TILE - remainder_y;\
-				vec2 myCoord = vec2(heghtmap_x + i, heghtmap_y + j) / 512.0f;\
-				float s = texture2D(HeightMap, myCoord).r;\
-				sum += s * L_Kernel[X+31]*L_Kernel[Y+31];\
-			}\
+		\
+		for (int i = -2; i<2; i++){\
+		    for (int j = -3; j<3; j++){\
+				int X = (i+1)*PIXELS_PER_TILE - remainder_x;\
+				int Y = (j+1)*PIXELS_PER_TILE - remainder_y;\
+				vec2 myCoord2;\
+				myCoord2.x = (tile_x + i) * (1.0f/512.0f); \
+				myCoord2.y = (tile_y + j) * (1.0f/512.0f); \
+				float foo = texture2D(HeightMap, myCoord2).r / 2.0;\
+		        partial_y += foo * L_Kernel[X+32]*GD_Kernel[Y+48];\
+            }\
+        }\
+		vec3 surface_normal;\
+		surface_normal.x = -partial_x;\
+        surface_normal.y = -partial_y;\
+		surface_normal.z = 1.0;\
+        surface_normal = normalize(surface_normal);\
 \
-		}\
-		sum /= 1.5f;\
-        gl_FragColor.r = sum;\
-		gl_FragColor.g = sum;\
-		gl_FragColor.b = sum;\
+		vec3 light_incedence;\
+		light_incedence.x = 1.0;\
+		light_incedence.y = 1.0;\
+		light_incedence.z = 1.0;\
+        light_incedence = normalize(light_incedence);\
+\
+		float hillshading = dot(surface_normal, light_incedence);\
+		gl_FragColor.r = hillshading;\
+		gl_FragColor.g = hillshading;\
+		gl_FragColor.b = hillshading;\
 		gl_FragColor.a = 1.0f;\
-\
     }";
+
 
 const float L_Kernel[65] = {0.000000, -0.001032, -0.004303, -0.009948,
                             -0.017905, -0.027892, -0.039389, -0.051644, -0.063684, -0.074349, -0.082335,
@@ -129,7 +150,7 @@ int main (void){
 	sfSprite* sprite1;
 
 	/* Create the main window */
-	window = sfRenderWindow_create(mode, "SFML window", sfResize | sfClose, NULL);
+	window = sfRenderWindow_create(mode, "Test 15", sfResize | sfClose, NULL);
 	bbAssert(window != NULL, "sfRenderWindow_create failed\n");
 
 	sfRenderWindow_clear(window, sfCyan);
@@ -180,8 +201,46 @@ int main (void){
 	while (1) {
 		sfEvent event;
 		sfRenderWindow_waitEvent(window, &event);
-		if (event.type == sfEvtKeyPressed) break;
+		if (event.type == sfEvtKeyPressed || event.type == sfEvtMouseButtonPressed) break;
 	}
 
 	exit(EXIT_SUCCESS);
 }
+
+sfRenderStates* hillShadingStates;
+
+int calcHillShading(sfRenderTexture** out, int square_i, int square_j){
+	if (hillShadingStates == NULL){
+		hillShadingStates = malloc(sizeof (*hillShadingStates));
+
+		sfTexture* hillTexture = sfTexture_createFromFile("../data/HEIGHTMAP.png", NULL);
+		bbAssert(hillTexture != NULL, "sfTexture_createFromFile failed\n");
+
+		sfShader* shader = sfShader_createFromMemory(vertShader, NULL, fragShader);
+		bbAssert(shader != NULL, "sfShader_createFromMemory failed\n");
+
+		sfShader_setFloatUniformArray(shader, "L_Kernel", L_Kernel, 65);
+		sfShader_setFloatUniformArray(shader, "GD_Kernel", GD_Kernel, 97);
+		sfShader_setTextureUniform(shader, "HeightMap", hillTexture);
+
+
+
+		hillShadingStates->shader = shader;
+		hillShadingStates->blendMode = sfBlendAlpha;
+		hillShadingStates->transform = sfTransform_Identity;
+		hillShadingStates->texture = hillTexture;
+
+	}
+
+	sfShader_setIntUniform(hillShadingStates->shader, "square_x", square_i);
+	sfShader_setIntUniform(hillShadingStates->shader, "square_y", square_j);
+	sfSprite* sprite = sfSprite_create();
+	sfSprite_setTexture(sprite, hillShadingStates->texture, sfTrue);
+
+	sfRenderTexture* outTexture = sfRenderTexture_create(512, 512, false);
+
+	sfRenderTexture_drawSprite(outTexture, sprite, &hillShadingStates);
+	sfRenderTexture_display(outTexture);
+	return NULL;
+}
+

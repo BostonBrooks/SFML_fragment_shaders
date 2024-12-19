@@ -39,40 +39,26 @@ char fragShader[] = "\
     \
     void main()\
     {\
-		int x = int(floor (gl_TexCoord[0].x * 512.0f));\
-		int y = int(floor (gl_TexCoord[0].y * 512.0f));\
-		int tile_x = x / PIXELS_PER_TILE;\
-		int tile_y = y / PIXELS_PER_TILE;\
-		int remainder_x = x % PIXELS_PER_TILE;\
-		int remainder_y = y % PIXELS_PER_TILE;\
-		int heghtmap_x = tile_x + HEIGHTMAP_PADDING;\
-		int heghtmap_y = tile_y + HEIGHTMAP_PADDING;\
+		float s = 0.0f;\
+		\
+		for (int i = -2; i<2; i++){\
+		    for (int j = -2; j<2; j++){\
+		        vec2 myCoord = gl_TexCoord[0].xy / PIXELS_PER_TILE;\
 \
-		int z = (x % 64);\
-		float w = ((L_Kernel[z]) + 1.0f)/2.0f;\
-		z = (y % 96);\
-		float bar = ((GD_Kernel[z]) + 1.0f)/2.0f;\
+				vec2 myCoord2;\
+				myCoord2.x = myCoord.x + i * (1.0f/512.0f / 4); \
+				myCoord2.y = myCoord.y + j * (1.0f/512.0f / 4); \
+		        s += texture2D(HeightMap, myCoord2).r / 16.0;\
+            }\
+        }\
 \
-		float sum = 0;\
-		vec2 myCoord = vec2(heghtmap_x, heghtmap_y) / 512.0f;\
-        gl_FragColor = texture2D(HeightMap, myCoord);\
-		for (int i = -2;i<2;i++){\
-			for(int j = -2; j<2; j++){\
-				int X = i*PIXELS_PER_TILE - remainder_x;\
-				int Y = j*PIXELS_PER_TILE - remainder_y;\
-				vec2 myCoord = vec2(heghtmap_x + i, heghtmap_y + j) / 512.0f;\
-				float s = texture2D(HeightMap, myCoord).r;\
-				sum += s * L_Kernel[X+31]*L_Kernel[Y+31];\
-			}\
-\
-		}\
-		sum /= 1.5f;\
-        gl_FragColor.r = sum;\
-		gl_FragColor.g = sum;\
-		gl_FragColor.b = sum;\
+		gl_FragColor.r = s;\
+		gl_FragColor.g = s;\
+		gl_FragColor.b = s;\
 		gl_FragColor.a = 1.0f;\
-\
     }";
+
+
 
 const float L_Kernel[65] = {0.000000, -0.001032, -0.004303, -0.009948,
                             -0.017905, -0.027892, -0.039389, -0.051644, -0.063684, -0.074349, -0.082335,
@@ -129,7 +115,7 @@ int main (void){
 	sfSprite* sprite1;
 
 	/* Create the main window */
-	window = sfRenderWindow_create(mode, "SFML window", sfResize | sfClose, NULL);
+	window = sfRenderWindow_create(mode, "Test 12", sfResize | sfClose, NULL);
 	bbAssert(window != NULL, "sfRenderWindow_create failed\n");
 
 	sfRenderWindow_clear(window, sfCyan);

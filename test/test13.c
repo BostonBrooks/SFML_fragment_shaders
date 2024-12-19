@@ -48,31 +48,27 @@ char fragShader[] = "\
 		int heghtmap_x = tile_x + HEIGHTMAP_PADDING;\
 		int heghtmap_y = tile_y + HEIGHTMAP_PADDING;\
 \
-		int z = (x % 64);\
-		float w = ((L_Kernel[z]) + 1.0f)/2.0f;\
-		z = (y % 96);\
-		float bar = ((GD_Kernel[z]) + 1.0f)/2.0f;\
+		float s = 0.0f;\
+		\
+		for (int i = -2; i<2; i++){\
+		    for (int j = -2; j<2; j++){\
+				int X = (i+1)*PIXELS_PER_TILE - remainder_x;\
+				int Y = (j+1)*PIXELS_PER_TILE - remainder_y;\
+				vec2 myCoord2;\
+				myCoord2.x = (tile_x + i) * (1.0f/512.0f); \
+				myCoord2.y = (tile_y + j) * (1.0f/512.0f); \
+				float foo = texture2D(HeightMap, myCoord2).r / 2.0;\
+		        s += foo * L_Kernel[X+32]*L_Kernel[Y+32];\
+            }\
+        }\
 \
-		float sum = 0;\
-		vec2 myCoord = vec2(heghtmap_x, heghtmap_y) / 512.0f;\
-        gl_FragColor = texture2D(HeightMap, myCoord);\
-		for (int i = -2;i<2;i++){\
-			for(int j = -2; j<2; j++){\
-				int X = i*PIXELS_PER_TILE - remainder_x;\
-				int Y = j*PIXELS_PER_TILE - remainder_y;\
-				vec2 myCoord = vec2(heghtmap_x + i, heghtmap_y + j) / 512.0f;\
-				float s = texture2D(HeightMap, myCoord).r;\
-				sum += s * L_Kernel[X+31]*L_Kernel[Y+31];\
-			}\
-\
-		}\
-		sum /= 1.5f;\
-        gl_FragColor.r = sum;\
-		gl_FragColor.g = sum;\
-		gl_FragColor.b = sum;\
+		gl_FragColor.r = s;\
+		gl_FragColor.g = s;\
+		gl_FragColor.b = s;\
 		gl_FragColor.a = 1.0f;\
-\
     }";
+
+
 
 const float L_Kernel[65] = {0.000000, -0.001032, -0.004303, -0.009948,
                             -0.017905, -0.027892, -0.039389, -0.051644, -0.063684, -0.074349, -0.082335,
@@ -129,7 +125,7 @@ int main (void){
 	sfSprite* sprite1;
 
 	/* Create the main window */
-	window = sfRenderWindow_create(mode, "SFML window", sfResize | sfClose, NULL);
+	window = sfRenderWindow_create(mode, "Test 13", sfResize | sfClose, NULL);
 	bbAssert(window != NULL, "sfRenderWindow_create failed\n");
 
 	sfRenderWindow_clear(window, sfCyan);

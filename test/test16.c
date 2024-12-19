@@ -28,7 +28,7 @@ char vertShader[] = "\n\
 char fragShader[] = "\
     #define PIXELS_PER_TILE       16\n\
 	#define TILES_PER_SQUARE      32\n\
-    #define HEIGHTMAP_PADDING     19\n\
+		#define HEIGHTMAP_PADDING     0\n\
 \
 \
 	uniform float L_Kernel[65];\
@@ -45,34 +45,55 @@ char fragShader[] = "\
 		int tile_y = y / PIXELS_PER_TILE;\
 		int remainder_x = x % PIXELS_PER_TILE;\
 		int remainder_y = y % PIXELS_PER_TILE;\
-		int heghtmap_x = tile_x + HEIGHTMAP_PADDING;\
-		int heghtmap_y = tile_y + HEIGHTMAP_PADDING;\
+		int heghtmap_x = tile_x + HEIGHTMAP_PADDING + square_x / (512 /PIXELS_PER_TILE);\
+		int heghtmap_y = tile_y + HEIGHTMAP_PADDING + square_y / (512 /PIXELS_PER_TILE);\
 \
-		int z = (x % 64);\
-		float w = ((L_Kernel[z]) + 1.0f)/2.0f;\
-		z = (y % 96);\
-		float bar = ((GD_Kernel[z]) + 1.0f)/2.0f;\
+		float partial_x = 0;\
+		float partial_y = 0;\
+		\
+		for (int i = -3; i<3; i++){\
+		    for (int j = -2; j<2; j++){\
+				int X = (i+1)*PIXELS_PER_TILE - remainder_x;\
+				int Y = (j+1)*PIXELS_PER_TILE - remainder_y;\
+				vec2 myCoord2;\
+				myCoord2.x = (heghtmap_x + i) * (1.0f/512.0f); \
+				myCoord2.y = (heghtmap_y + j) * (1.0f/512.0f); \
+				float foo = texture2D(HeightMap, myCoord2).r / 2.0;\
+		        partial_x += foo * GD_Kernel[X+48]*L_Kernel[Y+32];\
+            }\
+        }\
 \
-		float sum = 0;\
-		vec2 myCoord = vec2(heghtmap_x, heghtmap_y) / 512.0f;\
-        gl_FragColor = texture2D(HeightMap, myCoord);\
-		for (int i = -2;i<2;i++){\
-			for(int j = -2; j<2; j++){\
-				int X = i*PIXELS_PER_TILE - remainder_x;\
-				int Y = j*PIXELS_PER_TILE - remainder_y;\
-				vec2 myCoord = vec2(heghtmap_x + i, heghtmap_y + j) / 512.0f;\
-				float s = texture2D(HeightMap, myCoord).r;\
-				sum += s * L_Kernel[X+31]*L_Kernel[Y+31];\
-			}\
+		\
+		for (int i = -2; i<2; i++){\
+		    for (int j = -3; j<3; j++){\
+				int X = (i+1)*PIXELS_PER_TILE - remainder_x;\
+				int Y = (j+1)*PIXELS_PER_TILE - remainder_y;\
+				vec2 myCoord2;\
+				myCoord2.x = (tile_x + i) * (1.0f/512.0f); \
+				myCoord2.y = (tile_y + j) * (1.0f/512.0f); \
+				float foo = texture2D(HeightMap, myCoord2).r / 2.0;\
+		        partial_y += foo * L_Kernel[X+32]*GD_Kernel[Y+48];\
+            }\
+        }\
+		vec3 surface_normal;\
+		surface_normal.x = partial_x;\
+        surface_normal.y = -partial_y;\
+		surface_normal.z = 0.1;\
+        surface_normal = normalize(surface_normal);\
 \
-		}\
-		sum /= 1.5f;\
-        gl_FragColor.r = sum;\
-		gl_FragColor.g = sum;\
-		gl_FragColor.b = sum;\
+		vec3 light_incedence;\
+		light_incedence.x = 1.0;\
+		light_incedence.y = 1.0;\
+		light_incedence.z = 1.0;\
+        light_incedence = normalize(light_incedence);\
+\
+		float hillshading = dot(surface_normal, light_incedence);\
+		gl_FragColor.r = hillshading;\
+		gl_FragColor.g = hillshading;\
+		gl_FragColor.b = hillshading;\
 		gl_FragColor.a = 1.0f;\
-\
     }";
+
 
 const float L_Kernel[65] = {0.000000, -0.001032, -0.004303, -0.009948,
                             -0.017905, -0.027892, -0.039389, -0.051644, -0.063684, -0.074349, -0.082335,
@@ -112,76 +133,64 @@ const float GD_Kernel[97] = {-0.000370, -0.000525, -0.000739, -0.001032,
                              0.008433, 0.006407, 0.004826, 0.003605, 0.002670, 0.001962, 0.001429, 0.001032,
                              0.000739, 0.000525, 0.000000};
 
-int main (void){
 
 
 
-	sfVideoMode mode = {544, 544, 32};
-	sfRenderWindow* window;
-	sfTexture *magentaTexture, *blueTexture;
-	sfSprite* sprite;
-	sfShader* shader;
-	sfRenderStates renderStates;
-	sfTexture* checkTexture;
+int calcHillShading(sfRenderTexture** out, int square_i, int square_j){
 
-	sfRenderTexture* renderTexture1;
-	sfTexture* texture1;
-	sfSprite* sprite1;
+	static sfRenderStates* hillShadingStates = NULL;
+	if (hillShadingStates == NULL){
+		hillShadingStates = malloc(sizeof (*hillShadingStates));
 
-	/* Create the main window */
-	window = sfRenderWindow_create(mode, "SFML window", sfResize | sfClose, NULL);
-	bbAssert(window != NULL, "sfRenderWindow_create failed\n");
+		sfTexture* hillTexture = sfTexture_createFromFile("../data/HEIGHTMAP2.png", NULL);
+		bbAssert(hillTexture != NULL, "sfTexture_createFromFile failed\n");
 
-	sfRenderWindow_clear(window, sfCyan);
+		sfShader* shader = sfShader_createFromMemory(vertShader, NULL, fragShader);
+		bbAssert(shader != NULL, "sfShader_createFromMemory failed\n");
 
-	/* Load some textures */
-	magentaTexture = sfTexture_createFromFile("../data/MAGENTA.png", NULL);
-	bbAssert(magentaTexture != NULL, "sfTexture_createFromFile failed\n");
-	blueTexture = sfTexture_createFromFile("../data/BLUE.png", NULL);
-	bbAssert(blueTexture != NULL, "sfTexture_createFromFile failed\n");
-	checkTexture = sfTexture_createFromFile("../data/HEIGHTMAP.png", NULL);
-	bbAssert(checkTexture != NULL, "sfTexture_createFromFile failed\n");
-
-	/* Load a sprite to display */
-	sprite = sfSprite_create();
-	sfSprite_setTexture(sprite, magentaTexture, sfTrue);
+		sfShader_setFloatUniformArray(shader, "L_Kernel", L_Kernel, 65);
+		sfShader_setFloatUniformArray(shader, "GD_Kernel", GD_Kernel, 97);
+		sfShader_setTextureUniform(shader, "HeightMap", hillTexture);
 
 
-	renderTexture1 = sfRenderTexture_create(512, 512, sfFalse);
-	texture1 = sfRenderTexture_getTexture(renderTexture1);
-	sprite1 = sfSprite_create();
-	sfSprite_setTexture(sprite1, texture1, sfTrue);
-	sfVector2f position = {16, 16};
-	sfSprite_setPosition(sprite1, position);
 
-	/* compile shaders */
+		hillShadingStates->shader = shader;
+		hillShadingStates->blendMode = sfBlendAlpha;
+		hillShadingStates->transform = sfTransform_Identity;
+		hillShadingStates->texture = hillTexture;
 
-	shader = sfShader_createFromMemory(vertShader, NULL, fragShader);
-	bbAssert(shader != NULL, "sfShader_createFromMemory failed\n");
-
-	renderStates.shader = shader;
-	renderStates.blendMode = sfBlendAlpha;
-	renderStates.transform = sfTransform_Identity;
-	renderStates.texture = blueTexture;
-
-
-	/* set uniform(s) */
-    sfShader_setFloatUniformArray(shader, "L_Kernel", L_Kernel, 65);
-    sfShader_setFloatUniformArray(shader, "GD_Kernel", GD_Kernel, 97);
-	sfShader_setTextureUniform(shader, "HeightMap", checkTexture);
-	/* draw to window */
-
-	sfRenderTexture_drawSprite(renderTexture1, sprite, &renderStates);
-	sfRenderTexture_display(renderTexture1);
-
-	sfRenderWindow_drawSprite(window, sprite1, NULL);
-	sfRenderWindow_display(window);
-
-	while (1) {
-		sfEvent event;
-		sfRenderWindow_waitEvent(window, &event);
-		if (event.type == sfEvtKeyPressed) break;
 	}
 
-	exit(EXIT_SUCCESS);
+	sfShader_setIntUniform(hillShadingStates->shader, "square_x", square_i);
+	sfShader_setIntUniform(hillShadingStates->shader, "square_y", square_j);
+	sfSprite* sprite = sfSprite_create();
+	sfSprite_setTexture(sprite, hillShadingStates->texture, sfTrue);
+
+	sfRenderTexture* outTexture = sfRenderTexture_create(512, 512, false);
+
+	sfRenderTexture_drawSprite(outTexture, sprite, hillShadingStates);
+	sfRenderTexture_display(outTexture);
+
+	*out = outTexture;
+
+	return 0;
+}
+
+int main(void){
+
+	sfVideoMode mode = {512, 512, 32};
+	sfRenderWindow* window;
+	window = sfRenderWindow_create(mode, "Test 16", sfResize | sfClose, NULL);
+	bbAssert(window != NULL, "sfRenderWindow_create failed\n");
+
+	sfRenderTexture* renderTexture;
+	calcHillShading(&renderTexture, 0, 0);
+
+	sfTexture* texture = sfRenderTexture_getTexture(renderTexture);
+
+	sfSprite* sprite = sfSprite_create();
+	sfSprite_setTexture(sprite, texture, sfTrue);
+	sfRenderWindow_drawSprite(window, sprite, NULL);
+	sfRenderWindow_display(window);
+	sfSleep(sfSeconds(1));
 }

@@ -15,6 +15,10 @@ add_executable(SFML_fragment_shaders
         test/test8.c
         test/test9.c
         test/test10.c
-        test/test_CPU.c
         test/test_Lanczos.c
-        test/test_Lanczos.c)
+        test/test12.c
+        test/test14.c
+        test/test14.c
+        test/test15.c
+        test/test15.c
+        test/test16.c)
